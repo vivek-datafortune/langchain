@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatGroq } from '@langchain/groq';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { JsonOutputParser } from '@langchain/core/output_parsers';
 import { RunnableSequence } from '@langchain/core/runnables';
@@ -10,11 +10,11 @@ import { RunnableSequence } from '@langchain/core/runnables';
  * Returns: { title: string, description: string }
  */
 export function buildFeedbackChain() {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) throw new Error('GOOGLE_API_KEY environment variable is not set');
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY environment variable is not set');
 
-  const model = new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',
+  const model = new ChatGroq({
+    model: 'llama-3.3-70b-versatile',
     temperature: 0.2,
     apiKey,
   });
