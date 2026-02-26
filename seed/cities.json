@@ -1,0 +1,26 @@
+[
+  {
+    "_id": {
+      "$oid": "695085eb867465d67e5f001"
+    },
+    "code": "MUM",
+    "name": "Mumbai",
+    "state_name": "Maharashtra",
+    "country_name": "India",
+    "state_id": {
+      "$oid": "695085eb867465d67e5fs001"
+    },
+    "country_id": {
+      "$oid": "695085eb867465d67e5ff001"
+    },
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-02-25T10:15:16.313724Z"
+    },
+    "unique_id": "155ccaf8-37d8-401d-aa93-e854ee057cab",
+    "__v": 0,
+    "updated_at": {
+      "$date": "2026-02-25T10:15:16.313763Z"
+    }
+  }
+]

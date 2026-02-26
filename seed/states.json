@@ -1,0 +1,22 @@
+[
+  {
+    "_id": {
+      "$oid": "695085eb867465d67e5fs001"
+    },
+    "code": "MH",
+    "name": "Maharashtra",
+    "country_name": "India",
+    "country_id": {
+      "$oid": "695085eb867465d67e5ff001"
+    },
+    "created_at": {
+      "$date": "2026-02-25T10:15:16.296240Z"
+    },
+    "is_active": true,
+    "__v": 0,
+    "is_deleted": false,
+    "updated_at": {
+      "$date": "2026-02-25T10:15:16.296281Z"
+    }
+  }
+]

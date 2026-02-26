@@ -1,0 +1,31 @@
+[
+  {
+    "_id": {
+      "$oid": "695085eb867465d67e5fcl00"
+    },
+    "name": "Apex Diagnostics & Pathology",
+    "email": "contact@apexdiagnosticspathology.com",
+    "phone_number": "9890480424",
+    "city_id": {
+      "$oid": "695085eb867465d67e5f002"
+    },
+    "state_id": {
+      "$oid": "695085eb867465d67e5fs001"
+    },
+    "country_id": {
+      "$oid": "695085eb867465d67e5ff001"
+    },
+    "user_id": {
+      "$oid": "695085eb867465d67e5fcust01"
+    },
+    "is_verified": true,
+    "is_test_account": false,
+    "created_at": {
+      "$date": "2026-02-25T10:15:16.331511Z"
+    },
+    "is_active": true,
+    "unique_id": "fcd20ad8-426a-4f97-82ce-6ef35fd14b0e",
+    "__v": 0,
+    "clinic_id": "10001"
+  }
+]

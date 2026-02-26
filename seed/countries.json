@@ -1,0 +1,18 @@
+[
+  {
+    "_id": {
+      "$oid": "695085eb867465d67e5ff001"
+    },
+    "code": "IN",
+    "name": "India",
+    "created_at": {
+      "$date": "2026-02-25T10:15:16.284790Z"
+    },
+    "is_active": true,
+    "__v": 0,
+    "is_deleted": false,
+    "updated_at": {
+      "$date": "2026-02-25T10:15:16.284826Z"
+    }
+  }
+]

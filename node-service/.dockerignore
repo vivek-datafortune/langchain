@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+.git
+.DS_Store
+doc/
+*.md
+TEST_CASES.md
+ARCHITECTURE.md
