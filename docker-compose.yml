@@ -3,15 +3,18 @@ services:
     container_name: medivoice-api
     build:
       context: ./node-service
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "5001:5001"
     env_file:
       - ./node-service/.env
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - MONGODB_URI=mongodb://mongodb:27017/medivoice
       - WHISPER_SERVICE_URL=http://whisper:8000
+    volumes:
+      - ./node-service/src:/app/src
+      - ./node-service/nodemon.json:/app/nodemon.json
     depends_on:
       - mongodb
       - whisper
@@ -26,6 +29,31 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./whisper-service/app:/app/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - medivoice-network
+    restart: unless-stopped
+
+  client:
+    container_name: medivoice-client
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+      - ./client/index.html:/app/index.html
+      - ./client/vite.config.ts:/app/vite.config.ts
+      - ./client/tsconfig.json:/app/tsconfig.json
+      - ./client/tsconfig.app.json:/app/tsconfig.app.json
+      - ./client/tsconfig.node.json:/app/tsconfig.node.json
+    environment:
+      - VITE_API_URL=http://localhost:5001/api
+      - CHOKIDAR_USEPOLLING=true
     networks:
       - medivoice-network
     restart: unless-stopped

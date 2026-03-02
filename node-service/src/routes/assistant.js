@@ -4,6 +4,7 @@ import { transcribeAudio } from '../services/speechService.js';
 import { requireAuth } from '../middleware/auth.js';
 import { User } from '../models/User.js';
 import { processEnquiry } from '../graph/enquiry/workflow.js';
+import { findOrCreateConversation, getRecentMessages, saveInteraction, clearConversation } from '../services/conversationService.js';
 
 const router = Router();
 
@@ -64,7 +65,6 @@ router.post('/enquiry/text', requireAuth, async (req, res) => {
     }
 
     const trimmed = text.trim();
-    sendEvent('stage', { stage: 2, message: 'Understanding your question...' });
 
     const user = await User.findById(req.user.userId).lean();
     if (!user) {
@@ -76,10 +76,31 @@ router.post('/enquiry/text', requireAuth, async (req, res) => {
       return res.end();
     }
 
+    // Get or create conversation (auto-resets after 10 queries)
+    const conversation = await findOrCreateConversation(user._id.toString());
+    const conversationHistory = await getRecentMessages(conversation._id.toString());
+    console.log('[enquiry/text] Using conversation:', conversation._id, '| history length:', conversationHistory.length);
+
+    sendEvent('stage', { stage: 2, message: 'Understanding your question...' });
+
     const result = await processEnquiry(
       trimmed,
-      { userId: user._id, userType: user.user_type, clinicId: user.clinic_id },
+      { 
+        userId: user._id, 
+        userType: user.user_type, 
+        clinicId: user.clinic_id,
+        conversationId: conversation._id.toString(),
+        conversationHistory,
+      },
       (stageInfo) => sendEvent('stage', stageInfo),
+    );
+
+    // Save interaction to conversation
+    await saveInteraction(
+      conversation._id.toString(),
+      trimmed,
+      result.reply,
+      { intent: result.intent, response_type: result.response_type },
     );
 
     const resultPayload = {
@@ -87,6 +108,7 @@ router.post('/enquiry/text', requireAuth, async (req, res) => {
       intent: result.intent,
       transcription: trimmed,
       response_type: result.response_type ?? 'text',
+      conversationId: conversation._id.toString(),
     };
     if (result.response_type === 'json' && result.response_data != null) {
       resultPayload.data = result.response_data;
@@ -170,12 +192,23 @@ router.post('/enquiry', requireAuth, upload.single('audio'), async (req, res) =>
       return res.end();
     }
 
+    // Get or create conversation (auto-resets after 10 queries)
+    const conversation = await findOrCreateConversation(user._id.toString());
+    const conversationHistory = await getRecentMessages(conversation._id.toString());
+    console.log('[enquiry] Using conversation:', conversation._id, '| history length:', conversationHistory.length);
+
     console.log('[enquiry] invoking processEnquiry with:', { text: text.trim(), userId: user._id, userType: user.user_type, clinicId: user.clinic_id });
 
     // Stages 2–5: LangGraph (emits stage events via callback)
     const result = await processEnquiry(
       text.trim(),
-      { userId: user._id, userType: user.user_type, clinicId: user.clinic_id },
+      { 
+        userId: user._id, 
+        userType: user.user_type, 
+        clinicId: user.clinic_id,
+        conversationId: conversation._id.toString(),
+        conversationHistory,
+      },
       (stageInfo) => {
         console.log('[enquiry] SSE stage:', JSON.stringify(stageInfo));
         sendEvent('stage', stageInfo);
@@ -184,12 +217,21 @@ router.post('/enquiry', requireAuth, upload.single('audio'), async (req, res) =>
 
     console.log('[enquiry] processEnquiry result:', JSON.stringify({ reply: result.reply, intent: result.intent }));
 
+    // Save interaction to conversation
+    await saveInteraction(
+      conversation._id.toString(),
+      text.trim(),
+      result.reply,
+      { intent: result.intent, response_type: result.response_type },
+    );
+
     // Final result
     const resultPayload = {
       reply:         result.reply,
       intent:         result.intent,
       transcription: text.trim(),
       response_type: result.response_type ?? 'text',
+      conversationId: conversation._id.toString(),
     };
     if (result.response_type === 'json' && result.response_data != null) {
       resultPayload.data = result.response_data;
@@ -200,6 +242,33 @@ router.post('/enquiry', requireAuth, upload.single('audio'), async (req, res) =>
     sendEvent('error', { error: error.message || 'Enquiry processing failed' });
   } finally {
     res.end();
+  }
+});
+
+/**
+ * DELETE /assistant/conversations/clear
+ *
+ * Manually clears all conversations for the authenticated user.
+ * Used when user clicks "Reset Conversation" or "New Chat" button.
+ * Requires JWT auth.
+ */
+router.delete('/conversations/clear', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const deletedCount = await clearConversation(userId);
+    
+    console.log('[assistant] Cleared conversations for user:', userId, '| deleted:', deletedCount);
+    
+    res.json({ 
+      success: true, 
+      message: 'Conversation history cleared successfully.',
+      deletedCount,
+    });
+  } catch (error) {
+    console.error('[assistant] clear conversations error:', error.message);
+    res.status(500).json({ 
+      error: error.message || 'Failed to clear conversation history',
+    });
   }
 });
 

@@ -12,7 +12,7 @@ import type { Phase } from '../constants'
 import type { AnySpeechRecognition } from '../speechUtils'
 import type { EnquiryStage, EnquiryResult } from '../../../lib/api'
 
-export function useMediVoiceRecording() {
+export function useMediVoiceRecording(deviceId?: string) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [interimTranscript, setInterimTranscript] = useState('')
   const [finalTranscript, setFinalTranscript] = useState('')
@@ -112,8 +112,24 @@ export function useMediVoiceRecording() {
   const startRecording = useCallback(async () => {
     chunksRef.current = []
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const audioConstraints: MediaTrackConstraints = deviceId
+        ? { deviceId: { exact: deviceId } }
+        : true
+      
+      console.log('🎙️ [Recording] Starting with constraints:', audioConstraints)
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
       streamRef.current = stream
+      
+      // Log which device is actually being used
+      const audioTrack = stream.getAudioTracks()[0]
+      console.log('✅ [Recording] Using audio device:', {
+        label: audioTrack.label,
+        deviceId: audioTrack.getSettings().deviceId,
+        sampleRate: audioTrack.getSettings().sampleRate,
+        channelCount: audioTrack.getSettings().channelCount
+      })
+      
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
       recorderRef.current = recorder
       recorder.ondataavailable = (e) => {
@@ -124,14 +140,17 @@ export function useMediVoiceRecording() {
         streamRef.current = null
         const captured = [...chunksRef.current]
         chunksRef.current = []
+        console.log('📦 [Recording] Stopped, captured', captured.length, 'chunks')
         sendToEnquiry(captured)
       }
       recorder.start()
-    } catch {
+      console.log('🔴 [Recording] MediaRecorder started')
+    } catch (err) {
+      console.error('❌ [Recording] Failed to start:', err)
       setError('Microphone access denied')
       setPhase('idle')
     }
-  }, [sendToEnquiry])
+  }, [sendToEnquiry, deviceId])
 
   const finishListening = useCallback(() => {
     if (phaseRef.current === 'listening') {
@@ -144,9 +163,12 @@ export function useMediVoiceRecording() {
 
   const startActiveListening = useCallback(() => {
     if (!cookies.medivoice_token) {
+      console.log('⚠️ [Listening] No token, showing phone input')
       setShowPhoneInput(true)
       return
     }
+
+    console.log('👂 [Listening] Starting active listening mode')
 
     // Clear previous answer — new question starts fresh
     setEnquiryResult(null)
@@ -160,13 +182,18 @@ export function useMediVoiceRecording() {
     startRecording()
 
     const Ctor = getSpeechRecognition()
-    if (!Ctor) return
+    if (!Ctor) {
+      console.error('❌ [Listening] SpeechRecognition not available')
+      return
+    }
 
     const recognition = new Ctor()
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'en-US'
     recognitionRef.current = recognition
+    
+    console.log('🎤 [Listening] Speech recognition configured')
 
     noSpeechTimer.current = setTimeout(() => {
       if (
@@ -195,8 +222,10 @@ export function useMediVoiceRecording() {
         const t = event.results[i][0].transcript
         if (event.results[i].isFinal) {
           final += t
+          console.log('✅ [Listening] Final transcript:', t)
         } else {
           interim += t
+          console.log('⏳ [Listening] Interim transcript:', t)
         }
       }
       if (final) setFinalTranscript((prev) => prev + final)
@@ -206,17 +235,23 @@ export function useMediVoiceRecording() {
     }
 
     recognition.onerror = (event: { error: string }) => {
+      console.error('❌ [Listening] Recognition error:', event.error)
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
         setError(`Speech error: ${event.error}`)
       }
-      if (event.error === 'no-speech') finishListening()
+      if (event.error === 'no-speech') {
+        console.log('⚠️ [Listening] No speech detected, finishing')
+        finishListening()
+      }
     }
 
     recognition.onend = () => {
+      console.log('🛑 [Listening] Recognition ended')
       if (phaseRef.current === 'listening') finishListening()
     }
 
     recognition.start()
+    console.log('▶️ [Listening] Recognition started')
   }, [
     cookies.medivoice_token,
     startRecording,

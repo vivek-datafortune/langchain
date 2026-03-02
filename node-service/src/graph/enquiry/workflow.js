@@ -46,11 +46,13 @@ const NODE_STAGE_MAP = {
  * events as each node completes.
  *
  * @param {string}   content     - The user's question text
- * @param {object}   context     - { userId, userType, clinicId }
+ * @param {object}   context     - { userId, userType, clinicId, conversationId?, conversationHistory? }
  * @param {function} [onStage]   - Optional callback({ stage, message, data? }) for SSE
- * @returns {Promise<{ reply: string, intent: string, dbResult: any }>}
+ * @returns {Promise<{ reply: string, intent: string, dbResult: any, conversationId: string }>}
  */
-export async function processEnquiry(content, { userId, userType, clinicId }, onStage) {
+export async function processEnquiry(content, context, onStage) {
+  const { userId, userType, clinicId, conversationId, conversationHistory } = context;
+  
   if (!content || typeof content !== 'string') {
     throw new Error('Content must be a non-empty string');
   }
@@ -67,6 +69,8 @@ export async function processEnquiry(content, { userId, userType, clinicId }, on
     userId,
     userType,
     clinicId,
+    conversationId: conversationId || null,
+    conversationHistory: conversationHistory || [],
   });
 
   for await (const chunk of stream) {
@@ -93,5 +97,6 @@ export async function processEnquiry(content, { userId, userType, clinicId }, on
     dbResult:       finalState.dbResult,
     response_type: finalState.response_type ?? 'text',
     response_data:  finalState.response_data ?? null,
+    conversationId: conversationId,
   };
 }

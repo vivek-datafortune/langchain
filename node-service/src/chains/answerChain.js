@@ -5,11 +5,12 @@ import { RunnableSequence } from '@langchain/core/runnables';
 
 /**
  * Builds the LCEL chain for formatting DB query results into a natural-language reply.
- * prompt(question + data) -> Groq -> StringOutputParser
+ * prompt(question + data + conversationHistory) -> Groq -> StringOutputParser
  *
  * Inputs:
- *   question — the user's original question
- *   data     — JSON-stringified DB results
+ *   question             — the user's original question
+ *   data                 — JSON-stringified DB results
+ *   conversationHistory  — Array of previous messages [{role, content}]
  *
  * Returns: string — a friendly, concise answer grounded in the data
  */
@@ -34,8 +35,12 @@ Rules:
 - Be concise, friendly, and accurate. Format dates in a readable way. Format numbers clearly.
 - If the data is empty or null, say you couldn't find any matching records.
 - Do NOT invent data that is not in the provided context.
+- Use the conversation history to understand context and resolve references like "him", "her", "that patient", "those tests", etc.
 
-Data:
+Conversation History:
+{conversationHistory}
+
+Current Query Data:
 {data}`,
     ],
     ['human', '{question}'],

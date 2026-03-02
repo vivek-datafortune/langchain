@@ -53,12 +53,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Health check endpoint  
 app.get('/health', (req, res) => {
   res.json({
-    status: 'ok',
+    status: 'healthy',
+    service: 'medivoice-api',
+    version: process.env.APP_VERSION || '1.0.0',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
   });
 });
 

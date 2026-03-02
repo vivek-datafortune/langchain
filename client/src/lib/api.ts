@@ -309,3 +309,28 @@ export async function getMe(): Promise<MediVoiceUser> {
 export function getApiBase(): string {
   return API_BASE
 }
+
+// ── Conversations (MediVoice) ────────────────────────────────
+/**
+ * DELETE /assistant/conversations/clear — clears conversation history for the authenticated user.
+ */
+export async function clearConversation(): Promise<{ success: boolean; deletedCount: number }> {
+  const token = getAuthToken()
+  if (!token) {
+    throw new ApiError('Not authenticated. Please log in.')
+  }
+
+  const res = await fetch(`${ASSISTANT_BASE}/assistant/conversations/clear`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const json = await res.json()
+  if (!res.ok) {
+    throw new ApiError(json.error || 'Failed to clear conversation', res.status)
+  }
+
+  return json
+}

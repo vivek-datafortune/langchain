@@ -13,6 +13,10 @@ export const EnquiryState = Annotation.Root({
   userType:  Annotation({ reducer: (_, v) => v, default: () => null }),
   clinicId:  Annotation({ reducer: (_, v) => v, default: () => null }),
 
+  // ── Conversation context ───────────────────────────────────────────────────
+  conversationId: Annotation({ reducer: (_, v) => v, default: () => null }),
+  conversationHistory: Annotation({ reducer: (_, v) => v, default: () => [] }),
+
   // ── Intent extraction ──────────────────────────────────────────────────────
   intent:    Annotation({ reducer: (_, v) => v, default: () => null }),
   params:    Annotation({ reducer: (_, v) => v, default: () => ({}) }),

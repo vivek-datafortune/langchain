@@ -44,8 +44,8 @@ function withResponseType(reply, intent, dbResult) {
 // Uses a template for trivial results; calls answerChain for the rest.
 // ---------------------------------------------------------------------------
 export async function formatReplyNode(state) {
-  const { intent, dbResult, content, error } = state;
-  console.log('[formatReply] intent:', intent, '| has dbResult:', !!dbResult, '| error:', error);
+  const { intent, dbResult, content, error, conversationHistory } = state;
+  console.log('[formatReply] intent:', intent, '| has dbResult:', !!dbResult, '| error:', error, '| history length:', conversationHistory?.length || 0);
 
   if (error && !dbResult) {
     console.warn('[formatReply] Replying with error fallback — state.error:', error);
@@ -66,8 +66,18 @@ export async function formatReplyNode(state) {
   try {
     const chain = buildAnswerChain();
     const data = JSON.stringify(dbResult, null, 2);
-    console.log('[formatReply] calling answerChain | question:', content, '| data length:', data.length);
-    const reply = await chain.invoke({ question: content, data });
+    
+    // Format conversation history for context
+    const historyText = conversationHistory && conversationHistory.length > 0
+      ? conversationHistory.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')
+      : 'No previous conversation.';
+    
+    console.log('[formatReply] calling answerChain | question:', content, '| data length:', data.length, '| history messages:', conversationHistory?.length || 0);
+    const reply = await chain.invoke({ 
+      question: content, 
+      data,
+      conversationHistory: historyText,
+    });
     console.log('[formatReply] answerChain reply:', reply);
     return withResponseType(reply, intent, dbResult);
   } catch (err) {

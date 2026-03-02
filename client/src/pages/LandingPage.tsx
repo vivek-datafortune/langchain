@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, Stethoscope, ArrowRight } from 'lucide-react'
 import { ThemeToggle } from '../components/layout/ThemeToggle'
+import { motion } from 'framer-motion'
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -17,7 +18,12 @@ export function LandingPage() {
 
       {/* Hero */}
       <div className="flex flex-1 flex-col items-center justify-center gap-10 px-4">
-        <div className="text-center">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
           <h1 className="text-3xl font-bold tracking-tight"
             style={{
               background: 'linear-gradient(135deg, #f472b6, #818cf8, #38bdf8)',
@@ -28,20 +34,33 @@ export function LandingPage() {
             Choose an App
           </h1>
           <p className="mt-2 text-sm text-foreground/40">Select an application to continue</p>
-        </div>
+        </motion.div>
 
         {/* App cards */}
-        <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <motion.div 
+          className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        >
           {/* Alexa Feedback AI */}
-          <button
+          <motion.button
             onClick={() => navigate('/assistant')}
-            className="group flex flex-col gap-4 rounded-2xl p-6 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex flex-col gap-4 rounded-2xl p-6 text-left"
             style={{
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(129,140,248,0.2)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.border = '1px solid rgba(129,140,248,0.5)')}
-            onMouseLeave={e => (e.currentTarget.style.border = '1px solid rgba(129,140,248,0.2)')}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            whileHover={{ 
+              scale: 1.02,
+              boxShadow: '0 10px 30px -10px rgba(129,140,248,0.3)',
+              borderColor: 'rgba(129,140,248,0.5)',
+              transition: { duration: 0.3, ease: "easeOut" }
+            }}
+            whileTap={{ scale: 0.98 }}
           >
             <div
               className="flex h-12 w-12 items-center justify-center rounded-xl"
@@ -59,18 +78,26 @@ export function LandingPage() {
             <div className="flex items-center gap-1 text-xs font-medium text-indigo-400">
               Open <ArrowRight size={12} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </div>
-          </button>
+          </motion.button>
 
           {/* MediVoice */}
-          <button
+          <motion.button
             onClick={() => navigate('/medivoice')}
-            className="group flex flex-col gap-4 rounded-2xl p-6 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex flex-col gap-4 rounded-2xl p-6 text-left"
             style={{
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(52,211,153,0.2)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.border = '1px solid rgba(52,211,153,0.5)')}
-            onMouseLeave={e => (e.currentTarget.style.border = '1px solid rgba(52,211,153,0.2)')}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            whileHover={{ 
+              scale: 1.02,
+              boxShadow: '0 10px 30px -10px rgba(52,211,153,0.3)',
+              borderColor: 'rgba(52,211,153,0.5)',
+              transition: { duration: 0.3, ease: "easeOut" }
+            }}
+            whileTap={{ scale: 0.98 }}
           >
             <div
               className="flex h-12 w-12 items-center justify-center rounded-xl"
@@ -88,8 +115,8 @@ export function LandingPage() {
             <div className="flex items-center gap-1 text-xs font-medium text-emerald-400">
               Open <ArrowRight size={12} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </div>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     </div>
   )
