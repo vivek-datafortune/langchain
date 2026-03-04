@@ -1,5 +1,3 @@
-import type { ApiResponse, FeedbackResult, TicketItem, TicketStatus, TicketsApiResponse } from './types'
-
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
 // ── Error class ─────────────────────────────────────────────
@@ -9,100 +7,6 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
     this.status = status
-  }
-}
-
-// ── Assistant ───────────────────────────────────────────────
-export async function submitMessage(content: string): Promise<FeedbackResult> {
-  const res = await fetch(`${API_BASE}/reply`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: content.trim() }),
-  })
-  const json: ApiResponse = await res.json()
-  if (!res.ok || !json.success) {
-    throw new ApiError(
-      (json as unknown as { error: string }).error || 'Something went wrong',
-      res.status
-    )
-  }
-  return json.data
-}
-
-export async function* submitMessageStream(
-  content: string
-): AsyncGenerator<{ type: 'meta' | 'chunk' | 'ticket' | 'done'; data: string }> {
-  const res = await fetch(`${API_BASE}/reply/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: content.trim() }),
-  })
-
-  if (!res.ok) {
-    throw new ApiError('Stream request failed', res.status)
-  }
-
-  const reader = res.body?.getReader()
-  if (!reader) throw new ApiError('No response body')
-
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const raw = line.slice(6).trim()
-        if (raw === '[DONE]') return
-        try {
-          const parsed = JSON.parse(raw)
-          yield parsed
-        } catch {
-          yield { type: 'chunk' as const, data: raw }
-        }
-      }
-    }
-  }
-}
-
-// ── Tickets ─────────────────────────────────────────────────
-export async function getTickets(params?: {
-  status?: TicketStatus
-  priority?: string
-  page?: number
-  limit?: number
-}): Promise<{ tickets: TicketItem[]; total: number }> {
-  const query = new URLSearchParams()
-  if (params?.status) query.set('status', params.status)
-  if (params?.priority) query.set('priority', params.priority)
-  if (params?.page) query.set('page', String(params.page))
-  query.set('limit', String(params?.limit ?? 50))
-
-  const res = await fetch(`${API_BASE}/tickets?${query}`)
-  const json: TicketsApiResponse = await res.json()
-  if (!res.ok || !json.success) {
-    throw new ApiError('Failed to load tickets', res.status)
-  }
-  return {
-    tickets: json.data.tickets,
-    total: json.data.pagination.total,
-  }
-}
-
-export async function updateTicketStatus(id: string, status: TicketStatus): Promise<void> {
-  const res = await fetch(`${API_BASE}/tickets/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
-  })
-  if (!res.ok) {
-    throw new ApiError('Failed to update ticket status', res.status)
   }
 }
 
@@ -135,6 +39,8 @@ export interface EnquiryResult {
   transcription: string
   response_type?: 'text' | 'json'
   data?: Record<string, unknown>
+  conversationId?: string
+  conversationMessageCount?: number
 }
 
 function getAuthToken(): string | null {
@@ -201,7 +107,10 @@ export async function enquireAudio(
         try {
           const payload = JSON.parse(line.slice(6))
           if (currentEvent === 'stage')  callbacks.onStage(payload as EnquiryStage)
-          if (currentEvent === 'result') callbacks.onResult(payload as EnquiryResult)
+          if (currentEvent === 'result') {
+            console.log('[api/enquireAudio] result payload received:', payload)
+            callbacks.onResult(payload as EnquiryResult)
+          }
           if (currentEvent === 'error')  callbacks.onError((payload as { error: string }).error ?? 'Unknown error')
         } catch {
           // malformed JSON — ignore
@@ -271,7 +180,10 @@ export async function enquireText(
         try {
           const payload = JSON.parse(line.slice(6))
           if (currentEvent === 'stage') callbacks.onStage(payload as EnquiryStage)
-          if (currentEvent === 'result') callbacks.onResult(payload as EnquiryResult)
+          if (currentEvent === 'result') {
+            console.log('[api/enquireText] result payload received:', payload)
+            callbacks.onResult(payload as EnquiryResult)
+          }
           if (currentEvent === 'error') callbacks.onError((payload as { error: string }).error ?? 'Unknown error')
         } catch {
           /* ignore */
@@ -311,6 +223,30 @@ export function getApiBase(): string {
 }
 
 // ── Conversations (MediVoice) ────────────────────────────────
+/**
+ * GET /assistant/conversations/current — returns the current conversation's message count.
+ */
+export async function getConversationCurrent(): Promise<{ messageCount: number }> {
+  const token = getAuthToken()
+  if (!token) {
+    throw new ApiError('Not authenticated. Please log in.')
+  }
+
+  const res = await fetch(`${ASSISTANT_BASE}/assistant/conversations/current`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const json = await res.json()
+  if (!res.ok) {
+    throw new ApiError(json.error || 'Failed to get conversation state', res.status)
+  }
+
+  return json
+}
+
 /**
  * DELETE /assistant/conversations/clear — clears conversation history for the authenticated user.
  */

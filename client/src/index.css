@@ -11,6 +11,18 @@
   --color-status-done: #17c964;
 }
 
+/* Light theme: application background #ECF4E5 everywhere */
+html.light {
+  --background: #ECF4E5;
+  --foreground: #1a2e1a;
+  --muted: #5a6b5a;
+  background-color: #ECF4E5;
+}
+
+html.light body {
+  background-color: #ECF4E5;
+}
+
 /* Smooth dark/light transitions */
 html {
   transition: background-color 0.3s ease, color 0.3s ease;

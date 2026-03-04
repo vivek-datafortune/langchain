@@ -4,7 +4,7 @@ import { transcribeAudio } from '../services/speechService.js';
 import { requireAuth } from '../middleware/auth.js';
 import { User } from '../models/User.js';
 import { processEnquiry } from '../graph/enquiry/workflow.js';
-import { findOrCreateConversation, getRecentMessages, saveInteraction, clearConversation } from '../services/conversationService.js';
+import { findOrCreateConversation, getRecentMessages, saveInteraction, clearConversation, getConversationMessageCount } from '../services/conversationService.js';
 
 const router = Router();
 
@@ -96,7 +96,7 @@ router.post('/enquiry/text', requireAuth, async (req, res) => {
     );
 
     // Save interaction to conversation
-    await saveInteraction(
+    const messageCount = await saveInteraction(
       conversation._id.toString(),
       trimmed,
       result.reply,
@@ -109,10 +109,12 @@ router.post('/enquiry/text', requireAuth, async (req, res) => {
       transcription: trimmed,
       response_type: result.response_type ?? 'text',
       conversationId: conversation._id.toString(),
+      conversationMessageCount: messageCount,
     };
     if (result.response_type === 'json' && result.response_data != null) {
       resultPayload.data = result.response_data;
     }
+    console.log('[enquiry/text] sending result payload with conversationMessageCount:', messageCount);
     sendEvent('result', resultPayload);
   } catch (error) {
     console.error('[assistant] enquiry/text error:', error.message);
@@ -218,7 +220,7 @@ router.post('/enquiry', requireAuth, upload.single('audio'), async (req, res) =>
     console.log('[enquiry] processEnquiry result:', JSON.stringify({ reply: result.reply, intent: result.intent }));
 
     // Save interaction to conversation
-    await saveInteraction(
+    const messageCount = await saveInteraction(
       conversation._id.toString(),
       text.trim(),
       result.reply,
@@ -232,16 +234,39 @@ router.post('/enquiry', requireAuth, upload.single('audio'), async (req, res) =>
       transcription: text.trim(),
       response_type: result.response_type ?? 'text',
       conversationId: conversation._id.toString(),
+      conversationMessageCount: messageCount,
     };
     if (result.response_type === 'json' && result.response_data != null) {
       resultPayload.data = result.response_data;
     }
+    console.log('[enquiry/audio] sending result payload with conversationMessageCount:', messageCount);
     sendEvent('result', resultPayload);
   } catch (error) {
     console.error('[assistant] enquiry error:', error.message);
     sendEvent('error', { error: error.message || 'Enquiry processing failed' });
   } finally {
     res.end();
+  }
+});
+
+/**
+ * GET /assistant/conversations/current
+ *
+ * Returns the current conversation's message count for the authenticated user.
+ * Used to show context state on page load (e.g. after refresh).
+ * Requires JWT auth.
+ */
+router.get('/conversations/current', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const messageCount = await getConversationMessageCount(userId);
+    console.log('[assistant] GET /conversations/current | userId:', userId, '| messageCount:', messageCount);
+    res.json({ messageCount });
+  } catch (error) {
+    console.error('[assistant] get conversation current error:', error.message);
+    res.status(500).json({
+      error: error.message || 'Failed to get conversation state',
+    });
   }
 });
 

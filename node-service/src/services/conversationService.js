@@ -1,7 +1,7 @@
 import { Conversation } from '../models/Conversation.js';
 
-const MAX_QUERIES = 10;
-const CONTEXT_MESSAGE_LIMIT = 9; // Pass last 9 messages as context (keep 1 slot for current query)
+const MAX_QUERIES = 20;
+const CONTEXT_MESSAGE_LIMIT = 19; // Pass last 19 messages as context (keep 1 slot for current query)
 
 /**
  * Find or create a conversation for the user.
@@ -50,7 +50,7 @@ export async function findOrCreateConversation(userId) {
  * @param {string} userMessage - The user's query text
  * @param {string} assistantMessage - The assistant's reply text
  * @param {object} metadata - Optional metadata (intent, response_type, etc.)
- * @returns {Promise<void>}
+ * @returns {Promise<number>} The new total message count in the conversation
  */
 export async function saveInteraction(conversationId, userMessage, assistantMessage, metadata = {}) {
   if (!conversationId || !userMessage || !assistantMessage) {
@@ -78,6 +78,7 @@ export async function saveInteraction(conversationId, userMessage, assistantMess
 
   await conversation.save();
   console.log('[conversationService] Saved interaction to conversation:', conversationId, '| total messages:', conversation.messages.length);
+  return conversation.messages.length;
 }
 
 /**
@@ -104,6 +105,27 @@ export async function getRecentMessages(conversationId, limit = CONTEXT_MESSAGE_
     role: m.role,
     content: m.content,
   }));
+}
+
+/**
+ * Get the current conversation's message count for a user.
+ * Returns 0 if no conversation exists.
+ *
+ * @param {string} userId - The user's ID
+ * @returns {Promise<number>} Number of messages in the current conversation
+ */
+export async function getConversationMessageCount(userId) {
+  if (!userId) return 0;
+
+  const conversation = await Conversation.findOne({ userId })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  if (!conversation || !conversation.messages || conversation.messages.length === 0) {
+    return 0;
+  }
+
+  return conversation.messages.length;
 }
 
 /**
